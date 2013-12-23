@@ -1,7 +1,7 @@
 require 'test_helper'
 
 class UserStoriesTest < ActionDispatch::IntegrationTest
-	fixtures :products
+	#fixtures :products
 	# A user goes to the index page. They select a product, adding it to their
 	# cart, and check out, filling in their details on the checkout form. When
 	# they submit, an order is created containing their information, along with a
@@ -57,7 +57,7 @@ class UserStoriesTest < ActionDispatch::IntegrationTest
 	    get "/users/new" 
 	    assert_response :success	    
 	    assert_template "new"
-		post_via_redirect "create",
+		post_via_redirect "users",
 				user: { name: "dave",
 				password: "secret",
 				password_confirmation: "secret"}
@@ -81,5 +81,50 @@ class UserStoriesTest < ActionDispatch::IntegrationTest
 
       get "/users" 
       assert_redirected_to login_url
-   end
+   end   
+   	
+  test "changing order" do   			
+    user = users(:one)
+	get "/login" 
+	assert_response :success
+	post_via_redirect "/login", name: user.name, password: 'secret'
+	assert_response :success
+	assert_equal '/admin', path 
+	ship_date_expected = "some_date"
+	
+	get "/orders/#{orders(:one).id}/edit"
+	assert_response :success
+	assert_template "edit"
+	post_via_redirect "/orders",
+			order: {
+			name: orders(:one).name,
+			address: orders(:one).address,
+			email: orders(:one).email,
+			pay_type: orders(:one).pay_type,
+			ship_date: ship_date_expected
+		 }	
+	assert_response :success
+	assert_template "index"
+	orders = Order.order("updated_at desc")	
+	order = orders[0]
+	
+    assert_equal ship_date_expected, order.ship_date
+    
+    mail = OrderNotifier.shipped(order)
+	assert_equal [order.email], mail.to
+	assert_equal 'admin@application.com', mail[:from].value
+	assert_equal "Order from Pragmatic Store sended", mail.subject
+  end  
+
+  test "should mail the admin when error occurs" do
+    get "/carts/wibble"
+    assert_response :redirect
+    assert_template "/"      
+
+    mail = CartNotifier.error("Undefined cart accessing error wibble)")
+    assert_equal ["cheeerny@rambler.ru"], mail.to 
+    assert_equal "admin@application.com", mail[:from].value
+    assert_equal "Error", mail.subject
+  end   
+
 end

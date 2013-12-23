@@ -1,5 +1,5 @@
 class CartsController < ApplicationController
-  skip_before_filter :authorize, only: [:create, :update, :destroy]
+  skip_before_filter :authorize, only: [:create, :update, :destroy, :show]
   # GET /carts
   # GET /carts.json
   def index
@@ -18,6 +18,7 @@ class CartsController < ApplicationController
 	    @cart = Cart.find(params[:id])
 		rescue ActiveRecord::RecordNotFound
 		logger.error "Undefined cart accessing error #{params[:id]}"
+		CartNotifier.error("Undefined cart accessing error #{params[:id]}").deliver
 		redirect_to store_url, notice: 'Undefined cart'
 		else
 		    respond_to do |format|

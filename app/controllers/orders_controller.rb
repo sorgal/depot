@@ -73,9 +73,12 @@ class OrdersController < ApplicationController
   # PUT /orders/1.json
   def update
     @order = Order.find(params[:id])
-
+    old_ship_date = @order.ship_date
     respond_to do |format|
       if @order.update_attributes(params[:order])
+      	if @order.ship_date != old_ship_date
+      		OrderNotifier.shipped(@order).deliver	
+  		end
         format.html { redirect_to @order, notice: 'Order was successfully updated.' }
         format.json { head :no_content }
       else
